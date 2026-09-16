@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/min/Documents/CPP-26-2/Challenge/Week3-1/temperature'
+relocations:     []
+...

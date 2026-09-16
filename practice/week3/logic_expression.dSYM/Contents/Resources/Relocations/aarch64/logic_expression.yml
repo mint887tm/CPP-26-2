@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/min/Documents/CPP-26-2/practice/week3/logic_expression'
+relocations:     []
+...
