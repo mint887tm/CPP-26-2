@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/min/Documents/CPP-26-2/project/week5/tic_tac_toe3'
+relocations:     []
+...
