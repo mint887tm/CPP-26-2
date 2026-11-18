@@ -1,21 +1,17 @@
 #include <iostream>
 #include <string>
+#include <vector>  
 #include "user.h"
 using namespace std;
 
-const int mapX = 5;  // 맵의 가로 칸 수
-const int mapY = 5;  // 맵의 세로 칸 수
-
-// 함수 원형 선언
-bool checkXY(int user_x, int width, int user_y, int height);
-void displayMap(const int gameMap[][mapX], int user_x, int user_y);
-bool checkGoal(const int gameMap[][mapX], int user_x, int user_y);
-void checkState(const int gameMap[][mapX], int user_x, int user_y);
-bool CheckUser(User user);
+bool checkXY(const vector<vector<int>>& gameMap, int user_x, int user_y);
+void displayMap(const vector<vector<int>>& gameMap, int user_x, int user_y);
+bool checkGoal(const vector<vector<int>>& gameMap, int user_x, int user_y);
+void checkState(const vector<vector<int>>& gameMap, int user_x, int user_y);
 
 int main() {
-    // 0: 빈 공간, 1: 아이템, 2: 적, 3: 포션, 4: 목적지
-    int gameMap[mapY][mapX] = {
+    // 0: 빈칸, 1: 아이템, 2: 적, 3: 포션, 4: 목적지
+    vector<vector<int>> gameMap = {
         {0, 1, 2, 0, 4},
         {1, 0, 0, 2, 0},
         {0, 0, 0, 0, 0},
@@ -23,23 +19,23 @@ int main() {
         {3, 0, 0, 0, 2}
     };
 
-    // 유저의 현재 위치. x는 열, y는 행을 나타낸다.
     int user_x = 0;
     int user_y = 0;
 
-    // User 객체 하나를 생성한다. 생성자에서 HP가 20으로 설정된다.
+    // 생성자에서 HP는 20, itemCnt는 0으로 초기화된다.
     User user;
 
     while (true) {
-        // HP는 private이므로 GetHP()를 통해 읽는다.
         cout << "현재 HP: " << user.GetHP() << endl;
-        cout << "명령어를 입력하세요 (상,하,좌,우,지도,종료): ";
+        cout << "명령어를 입력하세요 (상,하,좌,우,지도,정보/info,종료): ";
 
         string user_input;
-        cin >> user_input;
+        if (!(cin >> user_input)) {
+            break;
+        }
 
-        // 이동할 위치를 임시로 계산한다.
-        // 맵 밖으로 나가면 실제 위치는 바꾸지 않는다.
+        // 우선 현재 위치를 복사해 다음 이동 위치를 계산한다.
+        // 맵 밖으로 나가려는 경우 실제 위치는 바꾸지 않는다.
         int next_x = user_x;
         int next_y = user_y;
         string moveMessage;
@@ -57,7 +53,12 @@ int main() {
             ++next_x;
             moveMessage = "오른쪽으로 이동합니다.";
         } else if (user_input == "지도") {
+            // 지도 보기만 하므로 이동하거나 HP를 소모하지 않는다.
             displayMap(gameMap, user_x, user_y);
+            continue;
+        } else if (user_input == "정보" || user_input == "info") {
+            // User의 << 연산자를 호출해 HP와 획득 아이템 수를 출력한다.
+            cout << user << endl;
             continue;
         } else if (user_input == "종료") {
             cout << "종료합니다." << endl;
@@ -67,49 +68,52 @@ int main() {
             continue;
         }
 
-        // 이동하려는 위치가 맵 안인지 확인한다.
-        if (!checkXY(next_x, mapX, next_y, mapY)) {
+        // 다음 위치가 맵 범위 밖이면 이동하지 않고 HP도 감소시키지 않는다.
+        if (!checkXY(gameMap, next_x, next_y)) {
             cout << "맵을 벗어났습니다. 다시 돌아갑니다." << endl;
             continue;
         }
 
-        // 유효한 위치인 경우에만 실제 좌표를 갱신한다.
+        // 유효한 이동이므로 실제 위치를 갱신한다.
         user_x = next_x;
         user_y = next_y;
-
         cout << moveMessage << endl;
         displayMap(gameMap, user_x, user_y);
 
-        // 한 칸 이동할 때 HP가 1 감소한다.
+        // 맵 안에서 한 칸 이동할 때 기본 HP 1을 감소시킨다.
         user.DecreaseHP(1);
 
-        // 현재 칸에 무엇이 있는지 메시지를 출력한다.
+        // 현재 칸의 종류에 맞는 안내 메시지를 출력한다.
         checkState(gameMap, user_x, user_y);
 
-        // 현재 칸의 상태를 확인해 추가 효과를 적용한다.
-        // 아이템·적·포션은 한 번 이용한 뒤 빈칸으로 바꾼다.
+        // int&는 현재 칸 자체를 가리킨다.
+        // currentTile을 바꾸면 vector 안의 해당 칸도 함께 바뀐다.
         int& currentTile = gameMap[user_y][user_x];
 
-        if (currentTile == 2) {
+        if (currentTile == 1) {
+            // 아이템 칸에 도착하면 획득 횟수를 1 증가시킨다.
+            user.IncreaseItemCnt();
+            cout << "아이템을 획득했습니다. 획득한 아이템 수가 1 증가했습니다." << endl;
+            currentTile = 0;  // 다시 방문해도 같은 아이템을 중복 획득하지 않도록 빈칸 처리
+        } else if (currentTile == 2) {
+            // 적을 만나면 이동 비용 외에 HP 2를 추가로 잃는다.
             user.DecreaseHP(2);
             cout << "적을 만나 HP가 2 감소했습니다." << endl;
-            currentTile = 0;
+            currentTile = 0;  // 적을 한 번 만난 뒤에는 해당 칸을 빈칸으로 처리
         } else if (currentTile == 3) {
+            // 포션을 마시면 HP 2를 회복한다. 포션은 itemCnt에 포함하지 않는다.
             user.IncreaseHP(2);
             cout << "포션을 만나 HP가 2 증가했습니다." << endl;
-            currentTile = 0;
-        } else if (currentTile == 1) {
-            // 아이템 칸은 방문 후 빈칸으로 처리한다.
-            currentTile = 0;
+            currentTile = 0;  // 다시 방문해도 포션을 중복 사용하지 않도록 빈칸 처리
         }
 
-        // HP가 0 이하인지 CheckUser 함수로 확인한다.
-        if (!CheckUser(user)) {
+        // HP가 0 이하이면 실패하고 게임을 끝낸다.
+        if (user.GetHP() <= 0) {
             cout << "실패" << endl;
             break;
         }
 
-        // 목적지에 도착했는지 확인한다.
+        // 현재 칸이 목적지인지 확인한다.
         if (checkGoal(gameMap, user_x, user_y)) {
             cout << "목적지에 도착했습니다! 축하합니다!" << endl;
             cout << "게임을 종료합니다." << endl;
@@ -120,17 +124,23 @@ int main() {
     return 0;
 }
 
-// 좌표가 맵의 범위 안에 있으면 true를 반환한다.
-bool checkXY(int user_x, int width, int user_y, int height) {
-    return user_x >= 0 && user_x < width &&
-           user_y >= 0 && user_y < height;
+// 좌표가 실제 vector 맵 안에 있는지 확인한다.
+bool checkXY(const vector<vector<int>>& gameMap, int user_x, int user_y) {
+    if (user_y < 0 || user_y >= static_cast<int>(gameMap.size())) {
+        return false;
+    }
+
+    if (user_x < 0 || user_x >= static_cast<int>(gameMap[user_y].size())) {
+        return false;
+    }
+
+    return true;
 }
 
-// 현재 위치가 표시된 지도를 출력한다.
-void displayMap(const int gameMap[][mapX], int user_x, int user_y) {
-    for (int row = 0; row < mapY; ++row) {
-        for (int col = 0; col < mapX; ++col) {
-            // 유저가 있는 칸에는 맵의 요소 대신 USER를 출력한다.
+// 현재 위치가 표시된 맵을 출력한다.
+void displayMap(const vector<vector<int>>& gameMap, int user_x, int user_y) {
+    for (int row = 0; row < static_cast<int>(gameMap.size()); ++row) {
+        for (int col = 0; col < static_cast<int>(gameMap[row].size()); ++col) {
             if (row == user_y && col == user_x) {
                 cout << " USER |";
             } else {
@@ -153,19 +163,18 @@ void displayMap(const int gameMap[][mapX], int user_x, int user_y) {
                 }
             }
         }
-
         cout << endl;
         cout << " -------------------------------- " << endl;
     }
 }
 
-// 현재 위치의 맵 값이 4이면 목적지에 도착한 것이다.
-bool checkGoal(const int gameMap[][mapX], int user_x, int user_y) {
+// 현재 위치의 칸이 목적지인지 확인한다.
+bool checkGoal(const vector<vector<int>>& gameMap, int user_x, int user_y) {
     return gameMap[user_y][user_x] == 4;
 }
 
-// 현재 칸에 있는 아이템·적·포션에 대한 메시지를 출력한다.
-void checkState(const int gameMap[][mapX], int user_x, int user_y) {
+// 현재 칸의 아이템·적·포션 종류를 메시지로 알려준다.
+void checkState(const vector<vector<int>>& gameMap, int user_x, int user_y) {
     switch (gameMap[user_y][user_x]) {
     case 1:
         cout << "무기/갑옷 아이템이 있습니다." << endl;
@@ -177,10 +186,4 @@ void checkState(const int gameMap[][mapX], int user_x, int user_y) {
         cout << "포션이 있습니다." << endl;
         break;
     }
-}
-
-// HP가 양수이면 게임을 계속할 수 있으므로 true를 반환한다.
-// 0 또는 음수이면 실패 상태이므로 false를 반환한다.
-bool CheckUser(User user) {
-    return user.GetHP() > 0;
 }
