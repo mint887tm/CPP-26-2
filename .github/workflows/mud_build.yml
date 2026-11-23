@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'practice/week13/actions_test/**'
-      - '.github/workflows/build.yml'
+      - '.github/workflows/mud_build.yml'
   workflow_dispatch:
 
 permissions:
