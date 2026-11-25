@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/min/Documents/CPP-26-2/project/week13/13-2_DNN'
+relocations:     []
+...
